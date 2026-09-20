@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>גלגל המזל - אתגרי חשיבה ומגבלות</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts (Rubik) -->
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:ital,wght@0,300..900;1,300..900&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Canvas Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Rubik', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0f7ff',
+                            100: '#e0effe',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            900: '#1e3a8a',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Rubik', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
+            min-height: 100vh;
+            color: #f8fafc;
+        }
+
+        /* Glassmorphism styling */
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.75);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+
+        /* Wheel Pointer Bounce Animation */
+        @keyframes ticker-bounce {
+            0%, 100% { transform: rotate(0deg); }
+            50% { transform: rotate(-20deg); }
+        }
+
+        .ticker-active {
+            animation: ticker-bounce 0.1s ease-in-out infinite;
+        }
+
+        /* Custom Scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(99, 102, 241, 0.5);
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(99, 102, 241, 0.8);
+        }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen text-slate-100 antialiased selection:bg-indigo-500 selection:text-white">
+
+    <!-- Header Navbar -->
+    <header class="w-full glass-panel sticky top-0 z-30 px-4 py-3 shadow-lg">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <div class="flex items-center space-x-3 space-x-reverse">
+                <div class="p-2.5 bg-gradient-to-tr from-indigo-600 to-violet-500 rounded-xl shadow-md shadow-indigo-500/20">
+                    <i class="fa-solid font-bold fa-compact-disc text-2xl text-white"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl md:text-2xl font-black bg-clip-text text-transparent bg-gradient-to-r from-amber-300 via-indigo-200 to-pink-300">
+                        גלגל האתגרים והמגבלות
+                    </h1>
+                    <p class="text-xs text-slate-400 hidden sm:block">סדנת חשיבה יצירתית, חדשנות ופתרון בעיות תחת אילוצים</p>
+                </div>
+            </div>
+
+            <!-- Quick Action Controls -->
+            <div class="flex items-center space-x-2 space-x-reverse">
+                <button id="soundToggleBtn" onclick="toggleSound()" class="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition shadow border border-slate-700/50" title="הפעל/שתק צלילים">
+                    <i id="soundIcon" class="fa-solid fa-volume-high text-lg w-5 text-center text-emerald-400"></i>
+                </button>
+                <button onclick="openManageModal()" class="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition shadow border border-slate-700/50 text-sm font-medium">
+                    <i class="fa-solid fa-pen-to-square"></i>
+                    <span class="hidden md:inline">ערוך אפשרויות</span>
+                </button>
+                <button onclick="openRulesModal()" class="flex items-center gap-2 px-3 py-2 rounded-xl bg-indigo-600/80 hover:bg-indigo-600 text-white transition shadow border border-indigo-400/30 text-sm font-medium">
+                    <i class="fa-solid fa-circle-question"></i>
+                    <span class="hidden md:inline">איך משחקים?</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Application Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        
+        <!-- Wheel Interactive Area (Center Stage) -->
+        <div class="lg:col-span-8 flex flex-col items-center justify-center glass-panel rounded-3xl p-6 md:p-8 shadow-2xl relative overflow-hidden">
+            
+            <!-- Glow background decorative elements -->
+            <div class="absolute -top-24 -left-24 w-96 h-96 bg-indigo-600/20 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="absolute -bottom-24 -right-24 w-96 h-96 bg-pink-600/20 rounded-full blur-3xl pointer-events-none"></div>
+
+            <!-- Canvas & Ticker Wrapper -->
+            <div class="relative flex items-center justify-center my-2 md:my-4">
+                
+                <!-- Wheel Pointer/Ticker Arrow -->
+                <div id="ticker" class="absolute -top-4 z-20 w-10 h-12 flex items-center justify-center filter drop-shadow-lg transition-transform duration-75">
+                    <svg width="40" height="48" viewBox="0 0 40 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M20 48L2 12C0 8 3 0 8 0H32C37 0 40 8 38 12L20 48Z" fill="url(#tickerGrad)" stroke="#ffffff" stroke-width="2"/>
+                        <circle cx="20" cy="14" r="5" fill="#ffffff" />
+                        <defs>
+                            <linearGradient id="tickerGrad" x1="0" y1="0" x2="40" y2="48" gradientUnits="userSpaceOnUse">
+                                <stop stop-color="#ef4444"/>
+                                <stop offset="1" stop-color="#b91c1c"/>
+                            </linearGradient>
+                        </defs>
+                    </svg>
+                </div>
+
+                <!-- Canvas Circle -->
+                <div class="p-3 bg-slate-900/80 rounded-full shadow-2xl border-4 border-slate-700/60 relative">
+                    <canvas id="wheelCanvas" width="540" height="540" class="max-w-full h-auto rounded-full cursor-pointer touch-none transition-transform duration-300 hover:scale-[1.01]"></canvas>
+
+                    <!-- Center Cap Spin Button -->
+                    <button id="spinCapBtn" onclick="spinWheel()" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 md:w-24 md:h-24 rounded-full bg-gradient-to-tr from-amber-500 via-orange-500 to-yellow-400 border-4 border-slate-900 text-slate-950 font-black text-lg md:text-xl shadow-xl flex flex-col items-center justify-center hover:scale-105 active:scale-95 transition group z-10">
+                        <i class="fa-solid fa-rotate text-lg md:text-xl group-hover:rotate-180 transition-transform duration-500 mb-0.5"></i>
+                        <span>סובב</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Big Spin CTA Button -->
+            <div class="mt-6 flex flex-wrap gap-4 justify-center items-center w-full max-w-md">
+                <button id="mainSpinBtn" onclick="spinWheel()" class="flex-1 py-4 px-8 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-slate-950 font-black text-xl shadow-lg shadow-teal-500/25 active:scale-[0.98] transition flex items-center justify-center gap-3">
+                    <i class="fa-solid fa-play text-2xl"></i>
+                    <span>סיבוב הגלגל</span>
+                </button>
+            </div>
+            
+            <p class="text-xs text-slate-400 mt-4 text-center">
+                לחץ על כפתור הסיבוב או על הגלגל עצמו כדי להגריל אתגר חשיבה
+            </p>
+        </div>
+
+        <!-- Sidebar Column -->
+        <div class="lg:col-span-4 flex flex-col gap-6">
+            
+            <!-- Active Constraint Card -->
+            <div class="glass-panel rounded-3xl p-5 shadow-xl border border-indigo-500/30">
+                <div class="flex items-center justify-between mb-3 border-b border-slate-700/60 pb-2">
+                    <h3 class="font-bold text-slate-200 flex items-center gap-2">
+                        <i class="fa-solid fa-bullseye text-amber-400"></i>
+                        המגבלה הנוכחית
+                    </h3>
+                    <span class="text-xs bg-indigo-900/60 text-indigo-300 font-semibold px-2.5 py-0.5 rounded-full border border-indigo-700/50">
+                        תוצאה אחרונה
+                    </span>
+                </div>
+
+                <div id="lastResultBox" class="p-4 rounded-2xl bg-slate-900/90 border border-slate-700/80 min-h-[110px] flex flex-col items-center justify-center text-center">
+                    <i class="fa-solid fa-dice-d6 text-3xl text-indigo-400/50 mb-2"></i>
+                    <p class="text-slate-400 text-sm">עדיין לא סובבת את הגלגל. לחץ על "סובב" כדי להתחיל!</p>
+                </div>
+            </div>
+
+            <!-- Draw History Panel -->
+            <div class="glass-panel rounded-3xl p-5 shadow-xl flex-1 flex flex-col max-h-[420px]">
+                <div class="flex items-center justify-between mb-3 border-b border-slate-700/60 pb-2">
+                    <h3 class="font-bold text-slate-200 flex items-center gap-2">
+                        <i class="fa-solid fa-clock-rotate-left text-indigo-400"></i>
+                        היסטוריית הגרלות
+                    </h3>
+                    <button onclick="clearHistory()" class="text-xs text-slate-400 hover:text-rose-400 transition flex items-center gap-1">
+                        <i class="fa-solid fa-trash-can"></i>
+                        ניקוי
+                    </button>
+                </div>
+
+                <div id="historyList" class="flex-1 overflow-y-auto space-y-2 pr-1">
+                    <p id="emptyHistoryMsg" class="text-slate-400 text-xs text-center py-8">טרם הוגרלו מגבלות בסשן זה</p>
+                </div>
+            </div>
+
+            <!-- Facilitator Tip Box -->
+            <div class="glass-panel rounded-3xl p-5 bg-gradient-to-br from-indigo-950/40 via-slate-900/60 to-purple-950/40 border border-purple-500/20 text-xs text-slate-300 space-y-2">
+                <div class="font-bold text-amber-300 flex items-center gap-2 text-sm">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    טיפ מנחים להפעלת הדיון:
+                </div>
+                <p>
+                    מגבלות קשות הן המנוע החזק ביותר לחדשנות! כשהגלגל נעצר על אילוץ, תנו לצוות 2-3 דקות לחשוב מחוץ לקופסה ולהציע פתרונות עוקפים.
+                </p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Result Showcase Modal -->
+    <div id="resultModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md opacity-0 pointer-events-none transition-all duration-300">
+        <div class="glass-panel rounded-3xl max-w-lg w-full p-6 md:p-8 shadow-2xl border-2 border-amber-400/40 relative transform scale-90 transition-all duration-300 text-center" id="resultModalCard">
+            
+            <button onclick="closeResultModal()" class="absolute top-4 left-4 text-slate-400 hover:text-white w-9 h-9 rounded-full bg-slate-800/80 flex items-center justify-center transition">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+
+            <!-- Icon Header -->
+            <div class="w-20 h-20 mx-auto rounded-full bg-gradient-to-tr from-amber-400 to-orange-500 flex items-center justify-center text-slate-950 text-3xl shadow-xl shadow-amber-500/20 mb-4 animate-bounce">
+                <i class="fa-solid fa-bolt"></i>
+            </div>
+
+            <span class="text-xs font-bold tracking-wider text-amber-400 uppercase bg-amber-400/10 px-3 py-1 rounded-full border border-amber-400/20">
+                האתגר שעל הלוח!
+            </span>
+
+            <h2 id="resultTitle" class="text-2xl md:text-3xl font-black text-white mt-3 mb-4 leading-snug">
+                --
+            </h2>
+
+            <!-- Discussion Questions Box -->
+            <div class="bg-slate-900/80 border border-slate-700/60 rounded-2xl p-4 text-right mb-6 text-sm space-y-2">
+                <div class="font-bold text-indigo-300 flex items-center gap-2 mb-1">
+                    <i class="fa-solid fa-comments"></i>
+                    שאלות מנחות לסיעור מוחות:
+                </div>
+                <ul class="list-disc list-inside text-slate-300 space-y-1 pr-1 text-xs md:text-sm">
+                    <li>איך האילוץ הזה משנה לחלוטין את גישת העבודה שלנו?</li>
+                    <li>איזו הזדמנות בלתי צפויה מסתתרת דווקא בתוך המגבלה הזו?</li>
+                    <li>מהם 3 הפתרונות היצירתיים ביותר שנוכל ליישם מיד?</li>
+                </ul>
+            </div>
+
+            <!-- Brainstorm Timer Tool -->
+            <div class="bg-indigo-950/50 border border-indigo-500/30 rounded-2xl p-4 mb-6">
+                <div class="flex items-center justify-between text-xs text-indigo-200 mb-2">
+                    <span class="font-bold flex items-center gap-1.5">
+                        <i class="fa-solid fa-stopwatch text-amber-400"></i>
+                        טיימר לחשיבה מהירה
+                    </span>
+                    <span id="timerDisplay" class="font-mono font-bold text-lg text-amber-300">02:00</span>
+                </div>
+                <div class="flex gap-2">
+                    <button id="timerStartBtn" onclick="toggleTimer()" class="flex-1 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition">
+                        התחל טיימר (2 דק')
+                    </button>
+                    <button onclick="resetTimer()" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs transition">
+                        איפוס
+                    </button>
+                </div>
+            </div>
+
+            <!-- Close & Action Buttons -->
+            <div class="flex gap-3">
+                <button onclick="closeResultModal()" class="flex-1 py-3 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold text-sm shadow-lg shadow-indigo-600/30 transition">
+                    אישור והמשך
+                </button>
+                <button onclick="closeResultModal(); spinWheel();" class="px-4 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-amber-300 font-bold text-sm transition border border-slate-700" title="סובב שוב">
+                    <i class="fa-solid fa-rotate-right"></i>
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Manage Wheel Items Modal -->
+    <div id="manageModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md opacity-0 pointer-events-none transition-all duration-300">
+        <div class="glass-panel rounded-3xl max-w-xl w-full p-6 shadow-2xl border border-slate-700 relative my-8 max-h-[90vh] flex flex-col">
+            
+            <div class="flex items-center justify-between border-b border-slate-700 pb-4 mb-4">
+                <h3 class="text-xl font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-sliders text-indigo-400"></i>
+                    עריכת אפשרויות הגלגל
+                </h3>
+                <button onclick="closeManageModal()" class="text-slate-400 hover:text-white w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Add Item Input -->
+            <div class="flex gap-2 mb-4">
+                <input type="text" id="newItemInput" placeholder="הוסף מגבלה או אתגר חדש..." class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+                <button onclick="addNewOption()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm rounded-xl transition flex items-center gap-1">
+                    <i class="fa-solid fa-plus"></i>
+                    הוסף
+                </button>
+            </div>
+
+            <!-- Dynamic Items List -->
+            <div id="manageItemsList" class="flex-1 overflow-y-auto space-y-2 pr-1 mb-4">
+                <!-- Items populated via JavaScript -->
+            </div>
+
+            <div class="flex justify-between items-center pt-4 border-t border-slate-700">
+                <button onclick="restoreDefaultOptions()" class="text-xs text-amber-400 hover:underline">
+                    שחזר אפשרויות ברירת מחדל
+                </button>
+                <button onclick="closeManageModal()" class="px-6 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold text-sm rounded-xl border border-slate-600 transition">
+                    סגור ושמור
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- How To Play Rules Modal -->
+    <div id="rulesModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md opacity-0 pointer-events-none transition-all duration-300">
+        <div class="glass-panel rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-700 relative text-right">
+            <button onclick="closeRulesModal()" class="absolute top-4 left-4 text-slate-400 hover:text-white w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            
+            <h3 class="text-xl font-bold text-amber-300 flex items-center gap-2 mb-4">
+                <i class="fa-solid fa-graduation-cap"></i>
+                איך מפעילים את הפעילות?
+            </h3>
+
+            <div class="space-y-3 text-sm text-slate-300 leading-relaxed">
+                <p>
+                    <strong>1. הצגת המשימה הראשונית:</strong> הציגו לצוות או למשתתפים משימה רגילה (לדוגמה: "תכננו מוצר חדש", "תכננו אירוע חברה", "פתרו בעיית שירות").
+                </p>
+                <p>
+                    <strong>2. סיבוב הגלגל:</strong> סובבו את הגלגל כדי להטיל אילוץ או מגבלה פתאומית על המשימה.
+                </p>
+                <p>
+                    <strong>3. אתגר החשיבה:</strong> הפעילו את הטיימר המובנה (2 דקות). המשתתפים חייבים להתאים את הרעיון שלהם למגבלה שעלתה.
+                </p>
+                <p>
+                    <strong>4. דיון ושתוף:</strong> הציגו את הפתרונות העוקפים. תראו איך מגבלות מייצרות רעיונות חדשניים שלא היו עולים בתנאים רגילים!
+                </p>
+            </div>
+
+            <div class="mt-6 text-center">
+                <button onclick="closeRulesModal()" class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition text-sm">
+                    הבנתי, בואו נתחיל!
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /* Audio Synthesizer via Web Audio API */
+        let audioCtx = null;
+        let soundEnabled = true;
+
+        function initAudio() {
+            if (!audioCtx) {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (AudioContext) {
+                    audioCtx = new AudioContext();
+                }
+            }
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function playTickSound() {
+            if (!soundEnabled) return;
+            try {
+                initAudio();
+                if (!audioCtx) return;
+
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(150, audioCtx.currentTime + 0.04);
+
+                gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.04);
+
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.04);
+            } catch (e) {}
+        }
+
+        function playWinFanfare() {
+            if (!soundEnabled) return;
+            try {
+                initAudio();
+                if (!audioCtx) return;
+
+                const now = audioCtx.currentTime;
+                const notes = [440, 554.37, 659.25, 880]; // Notes A4, C#5, E5, A5
+                notes.forEach((freq, idx) => {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+
+                    gain.gain.setValueAtTime(0.2, now + idx * 0.08);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.08 + 0.3);
+
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+
+                    osc.start(now + idx * 0.08);
+                    osc.stop(now + idx * 0.08 + 0.3);
+                });
+            } catch (e) {}
+        }
+
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            const soundIcon = document.getElementById('soundIcon');
+            if (soundEnabled) {
+                soundIcon.className = 'fa-solid fa-volume-high text-lg w-5 text-center text-emerald-400';
+            } else {
+                soundIcon.className = 'fa-solid fa-volume-xmark text-lg w-5 text-center text-rose-400';
+            }
+        }
+
+        // Default options requested by user
+        const defaultWheelItems = [
+            "אין לכם תקציב",
+            "יש לכם רק יום אחד",
+            "אסור להשתמש בטכנולוגיה",
+            "מותר להשתמש רק במה שכבר קיים",
+            "הפתרון חייב להתאים לכולם",
+            "רוב האנשים לא אוהבים את הרעיון",
+            "כבר קיים פתרון דומה",
+            "אתם חייבים להתחיל בקטן",
+            "אין לכם את הציוד שתכננתם להשתמש בו",
+            "התקציב שלכם קטן בחצי",
+            "הזמן שלכם קטן בחצי",
+            "המשתמשים ביקשו משהו אחר"
+        ];
+
+        // Active Options state
+        let wheelOptions = [...defaultWheelItems];
+
+        // Vibrant Color Palette for slices
+        const sliceColors = [
+            '#ef4444', '#f97316', '#f59e0b', '#10b981', 
+            '#06b6d4', '#3b82f6', '#6366f1', '#8b5cf6', 
+            '#ec4899', '#14b8a6', '#84cc16', '#d946ef'
+        ];
+
+        // Canvas & Physics State Variables
+        let canvas, ctx;
+        let currentAngle = 0; // in radians
+        let isSpinning = false;
+        let spinVelocity = 0;
+        let friction = 0.988; // Friction deceleration
+        let lastPassedIndex = -1;
+
+        // History Log
+        let historyLog = [];
+
+        window.onload = function() {
+            canvas = document.getElementById('wheelCanvas');
+            ctx = canvas.getContext('2d');
+            
+            // Add click listener directly to canvas
+            canvas.addEventListener('click', spinWheel);
+
+            // Draw initial static wheel
+            drawWheel();
+            renderManageItemsList();
+        };
+
+        function drawWheel() {
+            if (!canvas || !ctx) return;
+
+            const numSlices = wheelOptions.length;
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const radius = canvas.width / 2 - 15;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            if (numSlices === 0) {
+                // Empty state rendering
+                ctx.save();
+                ctx.fillStyle = '#334155';
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+                ctx.fill();
+                ctx.fillStyle = '#94a3b8';
+                ctx.font = 'bold 20px Rubik';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('אין אפשרויות בגלגל', centerX, centerY);
+                ctx.restore();
+                return;
+            }
+
+            const sliceAngle = (2 * Math.PI) / numSlices;
+
+            // Render each slice
+            for (let i = 0; i < numSlices; i++) {
+                const startAngle = currentAngle + i * sliceAngle;
+                const endAngle = startAngle + sliceAngle;
+
+                // Draw Slice Fill
+                ctx.beginPath();
+                ctx.moveTo(centerX, centerY);
+                ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+                ctx.closePath();
+
+                ctx.fillStyle = sliceColors[i % sliceColors.length];
+                ctx.fill();
+
+                // Draw Divider Lines
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = 'rgba(15, 23, 42, 0.4)';
+                ctx.stroke();
+
+                // Render Slice Text
+                ctx.save();
+                ctx.translate(centerX, centerY);
+                const textAngle = startAngle + sliceAngle / 2;
+                ctx.rotate(textAngle);
+
+                ctx.textAlign = 'right';
+                ctx.textBaseline = 'middle';
+                ctx.fillStyle = '#ffffff';
+                ctx.shadowColor = 'rgba(0,0,0,0.7)';
+                ctx.shadowBlur = 4;
+
+                const fontSize = numSlices > 12 ? 13 : numSlices > 8 ? 15 : 17;
+                ctx.font = `bold ${fontSize}px Rubik`;
+
+                const text = wheelOptions[i];
+                const maxTextWidth = radius - 70;
+                
+                ctx.fillText(text, radius - 25, 0, maxTextWidth);
+
+                ctx.restore();
+            }
+
+            // Draw Wheel Outer Rim
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+            ctx.lineWidth = 8;
+            ctx.strokeStyle = '#1e293b';
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius + 4, 0, 2 * Math.PI);
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = '#6366f1';
+            ctx.stroke();
+        }
+
+        function spinWheel() {
+            if (isSpinning) return;
+            if (wheelOptions.length === 0) {
+                openManageModal();
+                return;
+            }
+
+            initAudio();
+
+            isSpinning = true;
+            document.getElementById('mainSpinBtn').disabled = true;
+            document.getElementById('spinCapBtn').disabled = true;
+            document.getElementById('mainSpinBtn').classList.add('opacity-50', 'cursor-not-allowed');
+
+            // Generate random initial angular velocity
+            spinVelocity = Math.random() * 0.25 + 0.35;
+
+            lastPassedIndex = -1;
+
+            animateSpin();
+        }
+
+        function animateSpin() {
+            if (!isSpinning) return;
+
+            // Advance angle
+            currentAngle += spinVelocity;
+            currentAngle %= (2 * Math.PI);
+
+            // Apply friction decay
+            spinVelocity *= friction;
+
+            const numSlices = wheelOptions.length;
+            const sliceAngle = (2 * Math.PI) / numSlices;
+            
+            // Pointer position at top (270deg = 1.5 * Math.PI)
+            const pointerAngle = (1.5 * Math.PI - currentAngle + 4 * Math.PI) % (2 * Math.PI);
+            const currentSliceIndex = Math.floor(pointerAngle / sliceAngle) % numSlices;
+
+            // Trigger tick sound on boundary crossing
+            if (currentSliceIndex !== lastPassedIndex) {
+                lastPassedIndex = currentSliceIndex;
+                playTickSound();
+
+                const ticker = document.getElementById('ticker');
+                ticker.classList.remove('ticker-active');
+                void ticker.offsetWidth; // force reflow for animation restart
+                ticker.classList.add('ticker-active');
+            }
+
+            drawWheel();
+
+            // Stop condition check
+            if (spinVelocity < 0.0015) {
+                isSpinning = false;
+                spinVelocity = 0;
+                document.getElementById('mainSpinBtn').disabled = false;
+                document.getElementById('spinCapBtn').disabled = false;
+                document.getElementById('mainSpinBtn').classList.remove('opacity-50', 'cursor-not-allowed');
+                
+                document.getElementById('ticker').classList.remove('ticker-active');
+
+                onWheelStopped(currentSliceIndex);
+                return;
+            }
+
+            requestAnimationFrame(animateSpin);
+        }
+
+        function onWheelStopped(selectedIndex) {
+            const selectedText = wheelOptions[selectedIndex];
+            
+            playWinFanfare();
+
+            // Confetti effect
+            if (typeof confetti === 'function') {
+                confetti({
+                    particleCount: 80,
+                    spread: 70,
+                    origin: { y: 0.6 }
+                });
+            }
+
+            // Update Active Result UI
+            const lastResultBox = document.getElementById('lastResultBox');
+            lastResultBox.innerHTML = `
+                <div>
+                    <span class="text-xs font-bold text-amber-400 bg-amber-400/10 px-2.5 py-0.5 rounded-full border border-amber-400/30 mb-2 inline-block">
+                        מגבלה חדשה שנשלפה
+                    </span>
+                    <p class="text-xl font-black text-white leading-snug">${selectedText}</p>
+                </div>
+            `;
+
+            // Record to history
+            addToHistory(selectedText);
+
+            // Display result modal
+            document.getElementById('resultTitle').innerText = selectedText;
+            openResultModal();
+        }
+
+        function addToHistory(text) {
+            const timestamp = new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+            historyLog.unshift({ text, timestamp });
+
+            renderHistory();
+        }
+
+        function renderHistory() {
+            const historyList = document.getElementById('historyList');
+            if (historyLog.length === 0) {
+                historyList.innerHTML = '<p id="emptyHistoryMsg" class="text-slate-400 text-xs text-center py-8">טרם הוגרלו מגבלות בסשן זה</p>';
+                return;
+            }
+
+            historyList.innerHTML = historyLog.map((item, idx) => `
+                <div class="p-2.5 rounded-xl bg-slate-900/70 border border-slate-700/50 flex items-center justify-between text-xs text-slate-200 hover:border-indigo-500/40 transition">
+                    <div class="flex items-center gap-2 overflow-hidden pl-2">
+                        <span class="w-5 h-5 rounded-full bg-indigo-500/20 text-indigo-300 font-bold flex items-center justify-center text-[10px] shrink-0">
+                            ${historyLog.length - idx}
+                        </span>
+                        <span class="font-medium truncate">${item.text}</span>
+                    </div>
+                    <span class="text-[10px] text-slate-400 shrink-0 font-mono">${item.timestamp}</span>
+                </div>
+            `).join('');
+        }
+
+        function clearHistory() {
+            historyLog = [];
+            renderHistory();
+        }
+
+        let timerInterval = null;
+        let timerSeconds = 120; // 2 minutes default
+        let isTimerRunning = false;
+
+        function updateTimerDisplay() {
+            const minutes = Math.floor(timerSeconds / 60);
+            const seconds = timerSeconds % 60;
+            const formatted = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            document.getElementById('timerDisplay').innerText = formatted;
+        }
+
+        function toggleTimer() {
+            const btn = document.getElementById('timerStartBtn');
+            if (isTimerRunning) {
+                clearInterval(timerInterval);
+                isTimerRunning = false;
+                btn.innerText = 'המשך טיימר';
+                btn.className = 'flex-1 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition';
+            } else {
+                isTimerRunning = true;
+                btn.innerText = 'השהה טיימר';
+                btn.className = 'flex-1 py-2 rounded-xl bg-rose-500 hover:bg-rose-400 text-white font-bold text-xs transition';
+
+                timerInterval = setInterval(() => {
+                    if (timerSeconds > 0) {
+                        timerSeconds--;
+                        updateTimerDisplay();
+                    } else {
+                        clearInterval(timerInterval);
+                        isTimerRunning = false;
+                        btn.innerText = 'הזמן תם!';
+                        btn.className = 'flex-1 py-2 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs transition';
+                        playWinFanfare();
+                    }
+                }, 1000);
+            }
+        }
+
+        function resetTimer() {
+            clearInterval(timerInterval);
+            isTimerRunning = false;
+            timerSeconds = 120;
+            updateTimerDisplay();
+            const btn = document.getElementById('timerStartBtn');
+            btn.innerText = 'התחל טיימר (2 דק\')';
+            btn.className = 'flex-1 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition';
+        }
+
+        function openResultModal() {
+            resetTimer();
+            const modal = document.getElementById('resultModal');
+            const card = document.getElementById('resultModalCard');
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            card.classList.remove('scale-90');
+            card.classList.add('scale-100');
+        }
+
+        function closeResultModal() {
+            clearInterval(timerInterval);
+            isTimerRunning = false;
+            const modal = document.getElementById('resultModal');
+            const card = document.getElementById('resultModalCard');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            card.classList.remove('scale-100');
+            card.classList.add('scale-90');
+        }
+
+        function openManageModal() {
+            renderManageItemsList();
+            const modal = document.getElementById('manageModal');
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+        }
+
+        function closeManageModal() {
+            const modal = document.getElementById('manageModal');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            drawWheel();
+        }
+
+        function renderManageItemsList() {
+            const listContainer = document.getElementById('manageItemsList');
+            if (wheelOptions.length === 0) {
+                listContainer.innerHTML = '<p class="text-slate-400 text-sm text-center py-4">אין אפשרויות ברשימה. הוסף אפשרות חדשה למעלה.</p>';
+                return;
+            }
+
+            listContainer.innerHTML = wheelOptions.map((item, idx) => `
+                <div class="flex items-center justify-between p-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-200">
+                    <span class="font-medium pr-2">${item}</span>
+                    <button onclick="removeOption(${idx})" class="text-rose-400 hover:text-rose-300 p-1.5 rounded-lg hover:bg-slate-800 transition" title="מחק">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        function addNewOption() {
+            const input = document.getElementById('newItemInput');
+            const val = input.value.trim();
+            if (val) {
+                wheelOptions.push(val);
+                input.value = '';
+                renderManageItemsList();
+                drawWheel();
+            }
+        }
+
+        function removeOption(idx) {
+            wheelOptions.splice(idx, 1);
+            renderManageItemsList();
+            drawWheel();
+        }
+
+        function restoreDefaultOptions() {
+            wheelOptions = [...defaultWheelItems];
+            renderManageItemsList();
+            drawWheel();
+        }
+
+        function openRulesModal() {
+            const modal = document.getElementById('rulesModal');
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+        }
+
+        function closeRulesModal() {
+            const modal = document.getElementById('rulesModal');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+        }
+    </script>
+</body>
+</html>
